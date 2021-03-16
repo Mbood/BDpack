@@ -28,75 +28,46 @@
 ! MODULE:
 !
 !> @author
-!> Amir Saadat, Stanford University, May 2018
+!> Amir Saadat, Stanford University, Feb 2021
 !
 ! DESCRIPTION:
-!> force calculation on GPU
+!> The interfaces that inadvertently do not exist in the cusparse.mod
 !--------------------------------------------------------------------
-module force_cumod
+module cusparse_wrap
 
-  use :: prcn_mod
+  use,intrinsic :: iso_c_binding
+  use :: cusparse
+  use :: cudafor
 
-  implicit none
-
-!  private ::
-
-  type,abstract :: force_cu_t
-
-    private
-
-  contains
-
-    procedure(updateforce),deferred :: update
-
-  end type force_cu_t
-
-  abstract interface
-
-    subroutine updateforce(this,Rbx,Rby,Rbz,bs,invbs,itime,nch,ns,nb,nts,ntsx3,ntb,ntbx3,Qt)
-      import :: force_cu_t
-      import :: wp
-      implicit none
-      class(force_cu_t),intent(inout) :: this
-      real(wp),device,intent(in) :: Rbx(:)
-      real(wp),device,intent(in) :: Rby(:)
-      real(wp),device,intent(in) :: Rbz(:)
-      real(wp),intent(in) :: bs(3),invbs(3)
-!      real(wp),intent(inout) :: F(:)
-      integer,intent(in) :: itime,nch,ns,nb,nts,ntsx3,ntb,ntbx3
-      real(wp),device,intent(in) :: Qt(:)
-
-    end subroutine updateforce
-
+  ! cusparseCsr2cscEx2_bufferSize
+  interface
+    integer(c_int) function cusparseCsr2cscEx2_bufferSize(handle,m,n,nnz,csrVal,csrRowPtr,csrColInd,cscVal,cscColPtr,cscRowInd,valType,&
+        copyValues,idxBase,alg,bufferSize) bind(C,name='cusparseCsr2cscEx2')
+      use iso_c_binding
+      import cusparseHandle
+      type(cusparseHandle), value :: handle
+      integer(c_int), value :: m,n,nnz,valType,copyValues,idxBase,alg
+      !pgi$ ignore_tkr csrVal, cscVal
+      real(4),device :: csrVal(*),cscVal(*)
+      integer(c_int),device :: csrRowPtr(*),csrColInd(*),cscRowInd(*),cscColPtr(*)
+      integer(8) :: bufferSize
+    end function cusparseCsr2cscEx2_bufferSize
   end interface
 
-  save
-  !> Total force acting on the particles
-  real(wp),device,allocatable,target :: Fphi_d(:)
-  !> Interparticle distance times total force
-  real(wp),device,allocatable :: rFphi_d(:)
+  ! cusparseCsr2cscEx2
+  interface
+    integer(c_int) function cusparseCsr2cscEx2(handle,m,n,nnz,csrVal,csrRowPtr,csrColInd,cscVal,cscColPtr,cscRowInd,valType,copyValues,&
+        idxBase,alg,buffer) bind(C,name='cusparseCsr2cscEx2')
+      use iso_c_binding
+      import cusparseHandle
+      type(cusparseHandle), value :: handle
+      integer(c_int), value :: m,n,nnz,valType,copyValues,idxBase,alg
+      !pgi$ ignore_tkr csrVal, cscVal
+      real(4),device :: csrVal(*),cscVal(*)
+      integer(c_int), device :: csrRowPtr(*),csrColInd(*),cscRowInd(*),cscColPtr(*)
+      !pgi$ ignore_tkr buffer
+      character,device :: buffer(*)
+    end function cusparseCsr2cscEx2
+  end interface
 
-contains
-
-  !> Initializes force_mod module variables
-  subroutine init_force_d(ntbx3)
-
-    integer,intent(in) :: ntbx3
-
-    allocate(Fphi_d(ntbx3),rFphi_d(4))
-#ifdef Debuge_sequence
-    write(*,*) "module:force_cumod:init_force_d"
-#endif
-  end subroutine init_force_d
-
-  !> Deletion of the force_mod module variables
-  subroutine del_force_d()
-#ifdef Debuge_sequence
-    write(*,*) "module:force_cumod:del_force_d"
-#endif
-    deallocate(Fphi_d)
-
-  end subroutine del_force_d
-
-
-end module force_cumod
+end module cusparse_wrap

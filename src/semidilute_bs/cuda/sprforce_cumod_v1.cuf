@@ -65,7 +65,7 @@ module sprforce_cumod
     !> The buffer used for sparse operation
     integer(1), device, allocatable :: buffer(:)
 #endif
-    !real(wp), device, allocatable :: Fbnd_d(:)
+    real(wp), device, allocatable :: Fbnd_d(:)
 
   contains
 
@@ -273,11 +273,6 @@ contains
 
   end subroutine update_force_krnl
 
-
-
-
-
-
   !> Updates the bending force For WLC_SK/GEN
   !! \param  R coordinate of the position vector
   !! \param  Fbnd totoal Bending force on particles
@@ -293,9 +288,8 @@ contains
     use :: sprforce_mod, only : ForceLaw_i
     class(sprforce_cu_t),intent(inout) :: this
 
-    real(wp),managed, allocatable :: Fbnd_d(:)
     real(wp),device, intent(in) :: Qt(:)
-    real(wp),device, intent(in) :: R(:)
+    real(wp),device             :: R(:)
     integer ,device, intent(in) , optional  :: Ia(:)
     real(wp),device, intent(in) :: bs(3),invbs(3)
     integer,device , intent(in)  :: nchain,nseg,nbead,ntb,ntbx3,ntsx3
@@ -307,12 +301,11 @@ contains
     integer,device  :: osl,os,osb,oss,Osb1,OsS1,oslbbb,ibead,ichain,ibead_arm,i,osSbb,iarm
     !logical  :: add_cmb
 
-
+    allocate( this%Fbnd_d(ntbx3) )
+    this%Fbnd_d =0._wp
 
     select case (ForceLaw_i)
        case (WLC_SK)
-         allocate( Fbnd_d(ntbx3) )
-         Fbnd_d =0._wp
 #ifdef Debuge_sequence
        write(*,*) "Bending :",ForceLaw
        write(*,*) "module:sprforce_mod:update_bendforce_SK"
@@ -365,14 +358,14 @@ contains
             thta(-1)=acos((qtmp(1,-1)*qtmp(1,-2)+qtmp(2,-1)*qtmp(2,-2)+qtmp(3,-1)*qtmp(3,-2))/(qmg(-1)*qmg(-2)))
             cost(-1)=cos(thta(-1))
             !!Fi
-            Fbnd_d(osb*3-2:osb*3)= Fbnd_d(osb*3-2:osb*3)+&
+            this%Fbnd_d(osb*3-2:osb*3)= this%Fbnd_d(osb*3-2:osb*3)+&
                          WLC_C*(1/qmg(-1))*(ehat(1:3,-2)-cost(-1)*ehat(1:3,-1))
             !!Fi-1
-            Fbnd_d((osb-1)*3-2:(osb-1)*3)= Fbnd_d((osb-1)*3-2:(osb-1)*3)+&
+            this%Fbnd_d((osb-1)*3-2:(osb-1)*3)= this%Fbnd_d((osb-1)*3-2:(osb-1)*3)+&
                         WLC_C*( ehat(1:3,-1)*(1/qmg(-2)+cost(-1)/qmg(-1))-&
                                 ehat(1:3,-2)*(1/qmg(-1)+cost(-1)/qmg(-2)) )
             !!Fi-2
-            Fbnd_d((osb-2)*3-2:(osb-2)*3)= Fbnd_d((osb-2)*3-2:(osb-2)*3)+&
+            this%Fbnd_d((osb-2)*3-2:(osb-2)*3)= this%Fbnd_d((osb-2)*3-2:(osb-2)*3)+&
                         WLC_C*(1/qmg(-2))*( cost(-1)*ehat(1:3,-2)-ehat(1:3,-1))
             end do !ibead
          end do !ichain
@@ -425,15 +418,15 @@ contains
             cost(-1)=cos(thta(-1))
 
             !!Fi
-             Fbnd_d(osb*3-2:osb*3)= Fbnd_d(osb*3-2:osb*3)+&
+             this%Fbnd_d(osb*3-2:osb*3)= this%Fbnd_d(osb*3-2:osb*3)+&
                         WLC_C*(1/qmg(-1))*(ehat(:,-2)-cost(-1)*ehat(:,-1))
 
             !!Fi-1
-            Fbnd_d((osb-1)*3-2:(osb-1)*3)= Fbnd_d((osb-1)*3-2:(osb-1)*3)+&
+            this%Fbnd_d((osb-1)*3-2:(osb-1)*3)= this%Fbnd_d((osb-1)*3-2:(osb-1)*3)+&
                         WLC_C*( ehat(:,-1)*(1/qmg(-2)+cost(-1)/qmg(-1))-&
                                 ehat(:,-2)*(1/qmg(-1)+cost(-1)/qmg(-2)) )
             !!Fi-2
-            Fbnd_d((osb-2)*3-2:(osb-2)*3+0)= Fbnd_d((osb-2)*3-2:(osb-2)*3)+&
+            this%Fbnd_d((osb-2)*3-2:(osb-2)*3+0)= this%Fbnd_d((osb-2)*3-2:(osb-2)*3)+&
                         WLC_C*(1/qmg(-2))*(cost(-1)*ehat(:,-2)-ehat(:,-1))
 
             !Write(*,*) ichain,ibead,osb-2,Fbnd((osb-2)*3-2:(osb-2)*3+0)
@@ -535,17 +528,17 @@ contains
               costl=cos(thtal)
               costr=cos(thtar)
               ! force on BB Bead Left  n-1
-               Fbnd_d(oslbbb*3-5:oslbbb*3-3)= Fbnd_d(oslbbb*3-2:oslbbb*3)+&
+               this%Fbnd_d(oslbbb*3-5:oslbbb*3-3)= this%Fbnd_d(oslbbb*3-2:oslbbb*3)+&
                                           WLC_C*(1/qmgl)*(costl*ehatl(:)-ehat(:,-1))
               ! force on BB Bead Right n+1
-               Fbnd_d(oslbbb*3+1:oslbbb*3+3)= Fbnd_d(oslbbb*3+1:oslbbb*3+3)+&
+               this%Fbnd_d(oslbbb*3+1:oslbbb*3+3)= this%Fbnd_d(oslbbb*3+1:oslbbb*3+3)+&
                                           WLC_C*(1/qmgr)*(costr*ehatr(:)-ehat(:,-1))
               ! force on BB Bead Right n
-               Fbnd_d(oslbbb*3-2:oslbbb*3)= Fbnd_d(oslbbb*3-2:oslbbb*3)+WLC_C*&
+               this%Fbnd_d(oslbbb*3-2:oslbbb*3)= this%Fbnd_d(oslbbb*3-2:oslbbb*3)+WLC_C*&
                             (  (ehat(:,-1)*(1/qmgl  +costl/qmg(-1)) -ehatl(:)*(1/qmg(-1)+costl/qmgl))-&
                                (ehat(:,-1)*(1/qmgr  +costr/qmg(-1)) -ehatr(:)*(1/qmg(-1)+costr/qmgr)) )
               ! 1st bead of the arm F(v,v-1)+F(v,v+1)
-               Fbnd_d((osb)*3+1:(osb)*3+3)=WLC_C*( (1/qmg(-1))*(ehatr(:)-costr*ehat(:,-1))-&
+               this%Fbnd_d((osb)*3+1:(osb)*3+3)=WLC_C*( (1/qmg(-1))*(ehatr(:)-costr*ehat(:,-1))-&
                                                       (1/qmg(-1))*(ehatl(:)-costl*ehat(:,-1)) )
               end do
 
@@ -631,23 +624,23 @@ contains
               thta(-1)=acos((qtmp(1,-1)*qtmp(1,-2)+qtmp(2,-1)*qtmp(2,-2)+qtmp(3,-1)*qtmp(3,-2))/(qmg(-1)*qmg(-2)))
               cost(-1)=cos(thta(-1))
               ! force on BB Bead Left  n-1
-               Fbnd_d(oslbbb*3-5:oslbbb*3-3)= Fbnd_d(oslbbb*3-2:oslbbb*3)+&
+               this%Fbnd_d(oslbbb*3-5:oslbbb*3-3)= this%Fbnd_d(oslbbb*3-2:oslbbb*3)+&
                                       WLC_C*(1/qmgl)*(costl*ehatl(:)-ehat(:,-1))
               ! force on BB Bead Right n+1
-               Fbnd_d(oslbbb*3+1:oslbbb*3+3)= Fbnd_d(oslbbb*3+1:oslbbb*3+3)+&
+               this%Fbnd_d(oslbbb*3+1:oslbbb*3+3)= this%Fbnd_d(oslbbb*3+1:oslbbb*3+3)+&
                                         WLC_C*(1/qmgr)*(costr*ehatr(:)-ehat(:,-1))
               ! force on BB Bead Right n
-               Fbnd_d(oslbbb*3-2:oslbbb*3)= Fbnd_d(oslbbb*3-2:oslbbb*3)+WLC_C* &
+               this%Fbnd_d(oslbbb*3-2:oslbbb*3)= this%Fbnd_d(oslbbb*3-2:oslbbb*3)+WLC_C* &
                             ( (ehat(:,-1)*(1/qmgl  +costl/qmg(-1)) -ehatl(:)*(1/qmg(-1)+costl/qmgl))-&
                               (ehat(:,-1)*(1/qmgr  +costr/qmg(-1)) -ehatr(:)*(1/qmg(-1)+costr/qmgr))+&
                               (1/qmg(-1))*(cost(-1)*ehat(:,-1)- ehat(:,-2)) )
               ! 1st bead of the arm 2@F(v,v-1)+F(v,v)
-               Fbnd_d((osb)*3+1:(osb)*3+3)=WLC_C*( (1/qmg(-1))*(ehatr(:)-costr*ehat(:,-1))-&
+               this%Fbnd_d((osb)*3+1:(osb)*3+3)=WLC_C*( (1/qmg(-1))*(ehatr(:)-costr*ehat(:,-1))-&
                                                         (1/qmg(-1))*(ehatl(:)-costl*ehat(:,-1))+&
                                                         (ehat(:,-2)*(1/qmg(-1)+cost(-1)/qmg(-2))-&
                                                          ehat(:,-1)*(1/qmg(-2)+cost(-1)/qmg(-1)) ) )
               ! 2ed Bead F(v,v-1)
-               Fbnd_d((osb+1)*3+1:(osb+1)*3+3)=WLC_C*(1/qmg(-2)*(ehat(:,-1)-cost(-1)*ehat(:,-2)))
+               this%Fbnd_d((osb+1)*3+1:(osb+1)*3+3)=WLC_C*(1/qmg(-2)*(ehat(:,-1)-cost(-1)*ehat(:,-2)))
               end do
 
           else if (nseg_cmbar >= 3) then
@@ -740,24 +733,24 @@ contains
               cost(-1)=cos(thta(-1))
 
               ! force on BB Bead Left  n-1
-               Fbnd_d(oslbbb*3-5:oslbbb*3-3)= Fbnd_d(oslbbb*3-2:oslbbb*3)+&
+               this%Fbnd_d(oslbbb*3-5:oslbbb*3-3)= this%Fbnd_d(oslbbb*3-2:oslbbb*3)+&
                                           WLC_C*(1/qmgl)*(costl*ehatl(:)-ehat(:,-1))
               ! force on BB Bead Right n+1
-               Fbnd_d(oslbbb*3+1:oslbbb*3+3)= Fbnd_d(oslbbb*3+1:oslbbb*3+3)+&
+               this%Fbnd_d(oslbbb*3+1:oslbbb*3+3)= this%Fbnd_d(oslbbb*3+1:oslbbb*3+3)+&
                                           WLC_C*(1/qmgr)*(costr*ehatr(:)-ehat(:,-1))
               ! force on BB Bead Right n
-               Fbnd_d(oslbbb*3-2:oslbbb*3)= Fbnd_d(oslbbb*3-2:oslbbb*3)+WLC_C* &
+               this%Fbnd_d(oslbbb*3-2:oslbbb*3)= this%Fbnd_d(oslbbb*3-2:oslbbb*3)+WLC_C* &
                             ( (ehat(:,-1)*(1/qmgl  +costl/qmg(-1)) -ehatl(:)*(1/qmg(-1)+costl/qmgl))-&
                               (ehat(:,-1)*(1/qmgr  +costr/qmg(-1)) -ehatr(:)*(1/qmg(-1)+costr/qmgr))+&
                               (1/qmg(-1))*(cost(-1)*ehat(:,-1)-ehat(:,-2)) )
 
               !1st bead of the arm 2@F(v,v-1)+F(v,v) !!                     +  F(v,v+1) on the loop
-               Fbnd_d((osb)*3+1:(osb)*3+3)=WLC_C*( (1/qmg(-1))*(ehatr(:)-costr*ehat(:,-1))-&
+               this%Fbnd_d((osb)*3+1:(osb)*3+3)=WLC_C*( (1/qmg(-1))*(ehatr(:)-costr*ehat(:,-1))-&
                                                       (1/qmg(-1))*(ehatl(:)-costl*ehat(:,-1))+&
                                                       (ehat(:,-2)*(1/qmg(-1)+cost(-1)/qmg(-2))-&
                                                        ehat(:,-1)*(1/qmg(-2)+cost(-1)/qmg(-1))) )
               ! 2ed Bead F(v,v-1) !!!            +F(v,v)+ F(v,v+1) on the loop
-               Fbnd_d((osb+1)*3+1:(osb+1)*3+3)=WLC_C*(1/qmg(-2))*(ehat(:,-1)-cost(-1)*ehat(:,-2))
+               this%Fbnd_d((osb+1)*3+1:(osb+1)*3+3)=WLC_C*(1/qmg(-2))*(ehat(:,-1)-cost(-1)*ehat(:,-2))
 
 
               do ibead_arm=3,nseg_cmbar
@@ -810,14 +803,14 @@ contains
                 thta(-2)=acos((qtmp(1,-1)*qtmp(1,0)+qtmp(2,-1)*qtmp(2,0)+qtmp(3,-1)*qtmp(3,0))/(qmg(-1)*qmg(0)))
                 cost(-2)=cos(thta(-2))
                 !Fi = +Fi,i-1
-                Fbnd_d(osb*3-2:osb*3)= Fbnd_d(osb*3-2:osb*3)+&
+                this%Fbnd_d(osb*3-2:osb*3)= this%Fbnd_d(osb*3-2:osb*3)+&
                                       WLC_C*(1/qmg(0))*(ehat(:,-1)-cost(-1)*ehat(:,0))
                 !Fi-1 = +F(i-1,i-1)
-                Fbnd_d((osb-1)*3-2:(osb-1)*3+0)= Fbnd_d((osb-1)*3-2:(osb-1)*3)+&
+                this%Fbnd_d((osb-1)*3-2:(osb-1)*3+0)= this%Fbnd_d((osb-1)*3-2:(osb-1)*3)+&
                                       WLC_C*( ehat(:,0)*(1/qmg(-1)+cost(-1)/qmg(0))-&
                                               ehat(:,-1)*(1/qmg(0)+cost(-1)/qmg(-1)) )
                 !Fi-2 = +F(i-2,i-2+1)
-                Fbnd_d((osb-2)*3-2:(osb-2)*3)= Fbnd_d((osb-2)*3-2:(osb-2)*3)+&
+                this%Fbnd_d((osb-2)*3-2:(osb-2)*3)= this%Fbnd_d((osb-2)*3-2:(osb-2)*3)+&
                                       WLC_C*(1/qmg(-1))*(cost(-1)*ehat(:,-1)-ehat(:,0))
 
                 end do
@@ -829,22 +822,22 @@ contains
 
 	   	!$cuf kernel do <<< *,* >>>
         do ibead=1, ntb
-           Fphi_d(ibead*3-2)=Fphi_d(ibead*3-2)+ Fbnd_d(ibead*3-2)
-           Fphi_d(ibead*3-1)=Fphi_d(ibead*3-1)+ Fbnd_d(ibead*3-1)
-           Fphi_d(ibead*3) = Fphi_d(ibead*3)  + Fbnd_d(ibead*3)
+           Fphi_d(ibead*3-2)=Fphi_d(ibead*3-2)+ this%Fbnd_d(ibead*3-2)
+           Fphi_d(ibead*3-1)=Fphi_d(ibead*3-1)+ this%Fbnd_d(ibead*3-1)
+           Fphi_d(ibead*3) = Fphi_d(ibead*3)  + this%Fbnd_d(ibead*3)
 
-           rFphi_d(1)=rFphi_d(1)+ R(ibead*3-2)* Fbnd_d(ibead*3-2) !xx
-           rFphi_d(2)=rFphi_d(2)+ R(ibead*3-1)* Fbnd_d(ibead*3-2) !yx
-           rFphi_d(3)=rFphi_d(3)+ R(ibead*3-1)* Fbnd_d(ibead*3-1) !yy
-           rFphi_d(4)=rFphi_d(4)+ R(ibead*3) *  Fbnd_d(ibead*3)   !zz
+           rFphi_d(1)=rFphi_d(1)+ R(ibead*3-2)* this%Fbnd_d(ibead*3-2) !xx
+           rFphi_d(2)=rFphi_d(2)+ R(ibead*3-1)* this%Fbnd_d(ibead*3-2) !yx
+           rFphi_d(3)=rFphi_d(3)+ R(ibead*3-1)* this%Fbnd_d(ibead*3-1) !yy
+           rFphi_d(4)=rFphi_d(4)+ R(ibead*3) *  this%Fbnd_d(ibead*3)   !zz
          end do
-    deallocate(Fbnd_d)
+
     case default
     !    write(*,*) "Bending Not Working!"
     !Do nothing
     end select
 
-
+    deallocate(this%Fbnd_d)
 
   end subroutine update_bendforce
 
