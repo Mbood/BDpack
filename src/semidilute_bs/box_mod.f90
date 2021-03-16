@@ -827,14 +827,14 @@ contains
               this%Rb_d,this%Q_d,itime,itrst,ntotsegx3,ntotbead,ntotbeadx3,&
               this%size,this%origin)
           case ('PSF')
-             call this%Boxevf_d%update_vlt(this%Boxtrsfm_d%Rbtrx, this%Rby_d,this%Rbz_d,&
-               this%Rb_d,this%Q_d,itime,itrst,ntotsegx3,ntotbead,ntotbeadx3,&
-               this%size,this%origin)
+             !call this%Boxevf_d%update_vlt(this%Boxtrsfm_d%Rbtrx, this%Rby_d,this%Rbz_d,&
+             !  this%Rb_d,this%Q_d,itime,itrst,ntotsegx3,ntotbead,ntotbeadx3,&
+             !  this%size,this%origin)
 
           case ('PEF')
-             call this%Boxevf_d%update_vlt(this%Boxtrsfm_d%Rbtrx, this%Boxtrsfm_d%Rbtry, this%Rbz_d,&
-               this%Rb_d,this%Q_d,itime,itrst,ntotsegx3,ntotbead,ntotbeadx3,&
-               [bsx,bsy,this%size(3)],this%origin)
+            ! call this%Boxevf_d%update_vlt(this%Boxtrsfm_d%Rbtrx, this%Boxtrsfm_d%Rbtry, this%Rbz_d,&
+            !   this%Rb_d,this%Q_d,itime,itrst,ntotsegx3,ntotbead,ntotbeadx3,&
+             !  [bsx,bsy,this%size(3)],this%origin)
 
         end select
 #else
@@ -860,10 +860,6 @@ contains
     !----------------------------------------------------------
     if (HIcalc_mode == 'PME') then
 #ifdef USE_GPU
-        ! call update_lst(this%Rb_tilde,this%Boxtrsfm%Rbtrx,itime,itrst,nchain,nbead,&
-        !   nbeadx3,ntotbead,this%size,this%origin,add_cmb,nchain_cmb,nseg_cmb)
-        ! call this%Boxhi_d%updatelst_(this%Rb_tilde,this%Boxtrsfm%Rbtrx,itime,&
-        !     itrst,ntotbead,this%size,this%origin)
 
         call this%Boxhi_d%updatelst(this%Rbx_d,this%Rby_d,this%Rbz_d,this%Rb_d,this%Q_d,&
           itime,itrst,ntotsegx3,ntotbead,ntotbeadx3,this%size,this%origin)
@@ -1027,9 +1023,9 @@ contains
 #ifdef USE_GPU
 
       call update_arng_d()
-      if (reArng) then
-          call this%Boxtrsfm_d%unwrap(this%size,this%Rbx,this%Rby,this%b_img,itime)
-      end if
+      !if (reArng) then
+      !    call this%Boxtrsfm_d%unwrap(this%size,this%Rbx,this%Rby,this%b_img,itime)
+      !end if
       call update_trsfm_d()
 
 #else
@@ -1369,40 +1365,40 @@ contains
 
 ! GPU Shear Flow
       case ('PSF')
-        call this%Boxconv_d%RbctoRb(this%Boxtrsfm_d%Rbx_d,this%Rby_d,this%Rbz_d,this%Rb_d,ntotbead)
-        call this%Boxconv_d%RbtoQ(this%Rb_d,this%Q_d,ntotsegx3,ntotbeadx3,this%size)
+        !call this%Boxconv_d%RbctoRb(this%Boxtrsfm_d%Rbx_d,this%Rby_d,this%Rbz_d,this%Rb_d,ntotbead)
+        !call this%Boxconv_d%RbtoQ(this%Rb_d,this%Q_d,ntotsegx3,ntotbeadx3,this%size)
 
-	    ! update spring force
-        call this%Boxsprf_d%update(this%Boxtrsfm_d%Rbx_d,this%Rby_d,this%Rbz_d,this%size,this%invsize,&
-		                             itime,nchain,nseg,nbead,ntotseg,ntotsegx3,ntotbead,ntotbeadx3,this%Q_d)
+	    !! update spring force
+       ! call this%Boxsprf_d%update(this%Boxtrsfm_d%Rbx_d,this%Rby_d,this%Rbz_d,this%size,this%invsize,&
+		   !                          itime,nchain,nseg,nbead,ntotseg,ntotsegx3,ntotbead,ntotbeadx3,this%Q_d)
 
       ! Bending Force
-        call this%Boxconv_d%QtoR(this%Q_d,this%R_d,ntotsegx3,ntotbeadx3)
-        call this%Boxsprf_d%updatebend(this%Q_d,this%R_d,ntotbead,ntotbeadx3,ntotsegx3,nchain,nseg,nbead,nchain_cmb,&
-		                             nseg_cmb,nseg_cmbbb,nseg_cmbar,Na,Ia,this%size,this%invsize)
+       ! call this%Boxconv_d%QtoR(this%Q_d,this%R_d,ntotsegx3,ntotbeadx3)
+       ! call this%Boxsprf_d%updatebend(this%Q_d,this%R_d,ntotbead,ntotbeadx3,ntotsegx3,nchain,nseg,nbead,nchain_cmb,&
+		   !                          nseg_cmb,nseg_cmbbb,nseg_cmbar,Na,Ia,this%size,this%invsize)
 		!EV
         if (EVForceLaw /= 'NoEV') then
-          call this%Boxevf_d%update(this%Boxtrsfm_d%Rbx_d,this%Rby_d,this%Rbz_d,this%size,this%invsize,&
-                                 itime,nchain,nseg,nbead,ntotseg,ntotsegx3,ntotbead,ntotbeadx3,this%Q_d)
+       !   call this%Boxevf_d%update(this%Boxtrsfm_d%Rbx_d,this%Rby_d,this%Rbz_d,this%size,this%invsize,&
+       !                          itime,nchain,nseg,nbead,ntotseg,ntotsegx3,ntotbead,ntotbeadx3,this%Q_d)
 
 ! GPU Extentional Flow
       case ('PEF')
-	        call this%Boxconv_d%RbctoRb(this%Boxtrsfm_d%Rbx_d,this%Boxtrsfm_d%Rby_d,this%Rbz_d,this%Rb_d,ntotbead)
-          call this%Boxconv_d%RbtoQ(this%Rb_d,this%Q_d,ntotsegx3,ntotbeadx3,this%size)
+	   !     call this%Boxconv_d%RbctoRb(this%Boxtrsfm_d%Rbx_d,this%Boxtrsfm_d%Rby_d,this%Rbz_d,this%Rb_d,ntotbead)
+        !  call this%Boxconv_d%RbtoQ(this%Rb_d,this%Q_d,ntotsegx3,ntotbeadx3,this%size)
 
 	        !update spring force
-	        call this%Boxsprf_d%update(this%Boxtrsfm_d%Rbx_d,this%Boxtrsfm_d%Rby_d,this%Rbz_d,[bsx,bsy,this%size(3)],&
-		          [invbsx,invbsy,this%invsize(3)],itime,nchain,nseg,nbead,ntotseg,ntotsegx3,ntotbead,ntotbeadx3,this%Q_d)
+	    !    call this%Boxsprf_d%update(this%Boxtrsfm_d%Rbx_d,this%Boxtrsfm_d%Rby_d,this%Rbz_d,[bsx,bsy,this%size(3)],&
+		!          [invbsx,invbsy,this%invsize(3)],itime,nchain,nseg,nbead,ntotseg,ntotsegx3,ntotbead,ntotbeadx3,this%Q_d)
 
 	        !Bending Force
-          call this%Boxconv_d%QtoR(this%Q_d,this%R_d,ntotsegx3,ntotbeadx3)
-          call this%Boxsprf_d%updatebend(this%Q_d,this%R_d,ntotbead,ntotbeadx3,ntotsegx3,nchain,nseg,nbead,nchain_cmb,&
-		           nseg_cmb,nseg_cmbbb,nseg_cmbar,Na,Ia,[bsx,bsy,this%size(3)],[invbsx,invbsy,this%invsize(3)])
+        !  call this%Boxconv_d%QtoR(this%Q_d,this%R_d,ntotsegx3,ntotbeadx3)
+        !  call this%Boxsprf_d%updatebend(this%Q_d,this%R_d,ntotbead,ntotbeadx3,ntotsegx3,nchain,nseg,nbead,nchain_cmb,&
+		!           nseg_cmb,nseg_cmbbb,nseg_cmbar,Na,Ia,[bsx,bsy,this%size(3)],[invbsx,invbsy,this%invsize(3)])
 
           if (EVForceLaw /= 'NoEV') then
-             call this%Boxevf_d%update(this%Boxtrsfm_d%Rbx_d,this%Boxtrsfm_d%Rby_d,this%Rbz_d,&
-                   [bsx,bsy,this%size(3)],[invbsx,invbsy,this%invsize(3)],itime,nchain,nseg,&
-                    nbead,ntotseg,ntotsegx3,ntotbead,ntotbeadx3,this%Q_d)
+        !     call this%Boxevf_d%update(this%Boxtrsfm_d%Rbx_d,this%Boxtrsfm_d%Rby_d,this%Rbz_d,&
+         !          [bsx,bsy,this%size(3)],[invbsx,invbsy,this%invsize(3)],itime,nchain,nseg,&
+        !            nbead,ntotseg,ntotsegx3,ntotbead,ntotbeadx3,this%Q_d)
          end if
       end select
 
